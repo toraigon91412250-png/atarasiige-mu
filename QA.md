@@ -1,3 +1,24 @@
+# OVERDRIVE: VECTOR BREAK — v1.2 QA (2026-11-07)
+
+## Root cause of confirmed backward-movement bug
+
+In `moveAxis()` the X-axis transform used `Math.sin(p.y)` instead of `Math.sin(p.yaw)`. `p.y` is the camera/character height, so this created sideways drift regardless of camera rotation. At certain headings (270 degrees reproduced in Node), backward touch input resulted in movement toward the camera's forward direction. Corrected to `Math.sin(p.yaw)`.
+
+## Automated tests passed
+
+- `node --check game.js`: valid syntax.
+- `node test_movement.cjs`: joystick-pointer input DOWN produces BACK request and BACK actual movement for yaw 0, 90, 180, 270, 360, -45 degrees; capture-loss resets controls.
+- `node test_logic.cjs`: wave progression, upgrade choice, boss, victory, defeat, and draw calls.
+- `node test_visibility.cjs`: role colors and projectile cap remain unchanged.
+- `python test_touch_browser.py`: headless Chromium with emulated mobile touch viewport and a **mock WebGL context**. Tests actual pointerdown/move/up, BACK input and actual movement at 0/90/180/270°, and the debug toggle. No JavaScript page errors in this check.
+- HTML rebuilt and ZIP archive checksum/integrity verified.
+
+## Remaining limitations
+
+- Full iPhone Safari device test has not been performed; the user can validate with the MOVE DEBUG overlay.
+- Chromium screenshots used a mocked WebGL context, so this is not an actual GPU-rendering test.
+- The diagnostic panel is temporary and can be hidden with MOVE DEBUG.
+
 # OVERDRIVE // VECTOR BREAK — QA update v1.1 (2026-11-07)
 
 ## Implementation

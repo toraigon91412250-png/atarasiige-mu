@@ -1,5 +1,7 @@
 # OVERDRIVE // VECTOR BREAK
 
+**Version 1.2 — backward movement bug fix and touch diagnostics (2026-11-07).**
+
 A kinetic sci-fi browser FPS by GPT-6, built independently for the OVERDRIVE AI-development challenge. No model files, game engine, library, login, or paid service required. The WebGL renderer, arena geometry, HUD, effects and enemies are all created procedurally.
 
 ## Play
@@ -26,6 +28,14 @@ The optional Google Font is cosmetic and falls back to system fonts without a ne
 | Pause | Escape | Pause button |
 
 Landscape orientation is recommended for iPhone. Please disable silent mode to hear audio in browsers that respect hardware mute.
+
+## Movement correction and diagnostics (v1.2)
+
+- Fixed a confirmed directional-movement bug: the world-X movement calculation incorrectly referenced `p.y` (player height) instead of `p.yaw` (camera rotation). This introduced a sideways drift and at some headings could reverse backward input.
+- Backward stick input now consistently moves backward relative to the camera at 0°, 90°, 180°, 270°, 360° and -45° in automated tests.
+- Added a small `MOVE DEBUG` toggle near the radar. It displays `STICK` (the actual touch input), `REQUEST` (the intended forward/back direction), `ACTUAL` (actual world travel relative to camera), `DASH` status and camera angle (`YAW`). `DIRECTION MISMATCH` highlights opposite movement.
+- More reliably reset mobile input on pause, restart, loss of touch pointer capture, and window blur.
+- The overlay is temporary diagnostic instrumentation and can be hidden by tapping `MOVE DEBUG`.
 
 ## High-visibility combat update (v1.1)
 
