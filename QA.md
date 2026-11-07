@@ -1,41 +1,35 @@
-# OVERDRIVE: VECTOR BREAK — v1.2 QA (2026-11-07)
+# FLOW DRIVE v2.0-alpha1 QA — 2026-11-07
 
-## Root cause of confirmed backward-movement bug
+## 実装範囲
 
-In `moveAxis()` the X-axis transform used `Math.sin(p.y)` instead of `Math.sin(p.yaw)`. `p.y` is the camera/character height, so this created sideways drift regardless of camera rotation. At certain headings (270 degrees reproduced in Node), backward touch input resulted in movement toward the camera's forward direction. Corrected to `Math.sin(p.yaw)`.
+- 3D衝突判定: 水平移動時の段階的衝突検査、プラットフォーム上への落下着地、低い障害物の上を飛ぶ、高さ対応の壁レイ判定/敵弾衝突。
+- ジェットパック: 覚醒発動、Space/JUMP長押しの上昇、離した際の下降、覚醒終了時の重力復帰、最大高度制限。
+- FLOW: 命中/撃破/移動時の近接回避、発動時100消費、12秒初期/18秒残り時間上限、連続撃破延長、SKY BREAK。
+- PC/タッチ操作: EまたはDRIVEボタンで覚醒、上下動、旧キー操作維持。入力のリセットを一元管理。
+- 描画コード: 立体足場、ジャンプパッド、ORBIT高度変更、BULWARK背面弱点、覚醒金色のビーム/武器発光。
+- v1.2初期条件と6セクター進行、武器3種、旧アップグレード数12は維持。
 
-## Automated tests passed
+## 実行したテスト
 
-- `node --check game.js`: valid syntax.
-- `node test_movement.cjs`: joystick-pointer input DOWN produces BACK request and BACK actual movement for yaw 0, 90, 180, 270, 360, -45 degrees; capture-loss resets controls.
-- `node test_logic.cjs`: wave progression, upgrade choice, boss, victory, defeat, and draw calls.
-- `node test_visibility.cjs`: role colors and projectile cap remain unchanged.
-- `python test_touch_browser.py`: headless Chromium with emulated mobile touch viewport and a **mock WebGL context**. Tests actual pointerdown/move/up, BACK input and actual movement at 0/90/180/270°, and the debug toggle. No JavaScript page errors in this check.
-- HTML rebuilt and ZIP archive checksum/integrity verified.
+- JavaScript文法チェック: PASS
+- `test_flow_drive.cjs`: 覚醒の発動条件/高度上昇/解除後の下降と着地/高所の足場への着地/地上の壁による遮断/覚醒飛行による壁越え、9足場: PASS（乱数変更で6回連続）
+- `test_movement.cjs`: カメラ角度0,90,180,270,360,-45度で下方向入力が後退として扱われる: PASS
+- `test_logic.cjs`: セクター進行、アップグレード、ボス、勝利、描画呼び出し: PASS
+- `test_visibility.cjs`: 敵色および敵弾同時上限18発: PASS
+- `test_pressure.cjs`: 敵の攻撃プレッシャーを確認（出力記録）
+- `test_touch_browser.py`: Chromium（WebGLモック）のモバイルポインタ操作、後退入力と診断パネル: PASS
+- `test_mobile_drive.py`: Chromium（WebGLモック）にてタッチDRIVE、実タッチ長押し、上昇、離して解除、非表示のボタン状態: PASS
 
-## Remaining limitations
+## 制約
 
-- Full iPhone Safari device test has not been performed; the user can validate with the MOVE DEBUG overlay.
-- Chromium screenshots used a mocked WebGL context, so this is not an actual GPU-rendering test.
-- The diagnostic panel is temporary and can be hidden with MOVE DEBUG.
+- 実WebGL描画: テストブラウザのGPU利用制限でコンテキスト作成できず、未確認。モックWebGLの描画呼び出し数は実3D表示の成功を保証しない。
+- iPhone Safari実機の入力/描画/FPS: 未確認。
+- 視覚的な最終品質、ボス戦の実プレイバランス: 未調整。
+- GitHub上の従来版v1.2: 変更なし。
 
-# OVERDRIVE // VECTOR BREAK — QA update v1.1 (2026-11-07)
+## 今後の確認優先度
 
-## Implementation
-- High-contrast low-poly procedural robots in bright red, yellow, pink and white.
-- Enemy-only shader clarity control, reduced arena clutter.
-- Compact colored projectiles with a hard cap of 18 at once; reduced volleys.
-- No rendered long attack-warning lines or ground targeting circles.
-- First sector starts with four enemies.
-
-## Verified locally
-- JavaScript syntax check: passed.
-- Mock-WebGL Node integration simulation: passed (wave progression, upgrades, boss and victory).
-- Stationary threat simulation: passed (enemy attacks cause health and shield damage).
-- Projectile cap and visibility assertions: passed.
-- Single-file HTML rebuild and ZIP integrity checks: passed.
-- GitHub Pages deployment at the updated main commit: succeeded.
-
-## Outstanding checks
-- This environment could not complete interactive GPU WebGL rendering or real iPhone Safari touch testing.
-- Full visual readability and game balance should be judged with hands-on play.
+1. 実機WebGLで3層プラットフォームが正しく表示され、深度ソート・上下判定が自然か。
+2. スマホでFLOW満タン時のDRIVEボタンが操作を邪魔しないか。
+3. 通常時に覚醒が溜まる速度・無双中の敵撃破時間・連続覚醒が適正か。
+4. 敵弾の上下方向と背面弱点判定が実際のゲームプレイと一致するか。

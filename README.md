@@ -1,79 +1,52 @@
-# OVERDRIVE // VECTOR BREAK
+# OVERDRIVE // VECTOR BREAK — FLOW DRIVE ALPHA
 
-**Version 1.2 — backward movement bug fix and touch diagnostics (2026-11-07).**
+**Version:** v2.0-alpha1 (2026-11-07)
 
-A kinetic sci-fi browser FPS by GPT-6, built independently for the OVERDRIVE AI-development challenge. No model files, game engine, library, login, or paid service required. The WebGL renderer, arena geometry, HUD, effects and enemies are all created procedurally.
+GPT-6版 OVERDRIVE の独立開発プレビュー。**GitHub Pagesの旧v1.2は変更していない。** 新版を確認するための単体HTMLを同梱。
 
-## Play
+## プレイ方法
 
-- **GitHub Pages:** open the repository's deployed site, when Pages has been enabled.
-- **Offline:** open `OVERDRIVE.html` in a browser with WebGL support.
-- **From source:** open `index.html` alongside `style.css` and `game.js`.
-- **Rebuild single file:** `python build.py`.
+- `OVERDRIVE.html` または `index.html` をブラウザで開く（WebGL必須、外部ライブラリ不要）。
+- 元のプロジェクトへ統合する場合は `template.html`, `style.css`, `game.js` と `build.py` を使い `python build.py` でビルドする。
+- PCはマウス・キーボード、タッチ端末は横画面推奨。
 
-The optional Google Font is cosmetic and falls back to system fonts without a network connection.
+## 操作
 
-## Controls
-
-| Function | PC | iPhone / touch |
+| 動作 | PC | タッチ |
 |---|---|---|
-| Move | WASD | Left virtual stick |
-| Look | Mouse (pointer lock) | Swipe right side |
-| Fire | Hold left click | Hold FIRE |
-| Jump / Double jump | Space | JUMP |
-| Dash | Shift | DASH |
-| Slide | C | SLIDE |
-| Emitter switch | 1, 2, 3 or Q / mouse wheel | SWAP |
-| Recharge / reload | R | RELOAD |
-| Pause | Escape | Pause button |
+| 移動・視点 | WASD / マウス | 左スティック / 右側をスワイプ |
+| 射撃 | マウス左長押し | FIRE長押し |
+| ジャンプ / 二段ジャンプ | Space | JUMP |
+| 覚醒時の上昇 | Space長押し | JUMP長押し |
+| FLOW DRIVE発動 | FLOW 100で E | FLOW 100で現れるDRIVEボタン |
+| ダッシュ / スライド | Shift / C | DASH / SLIDE |
+| 武器変更 / リロード | 1-3,Q / R | SWAP / RELOAD |
+| 停止 | Escape | 右上停止ボタン |
 
-Landscape orientation is recommended for iPhone. Please disable silent mode to hear audio in browsers that respect hardware mute.
+## 今回の新機能
 
-## Movement correction and diagnostics (v1.2)
+- 9つの高所プラットフォームと4つのジャンプパッド。元の障害物と合わせて**高さを考慮する衝突判定**を追加。
+- 旧KINETIC ENERGYをFLOW CHARGEに統合。**敵への命中・撃破・移動しながらの弾の直前回避**でFLOW獲得。ゲージ満タンで覚醒を任意発動。
+- FLOW DRIVEは12秒からスタート（最大残り時間18秒）。移動速度×1.65、攻撃力×1.8、長押しジェットパックで高速飛行。敵を倒すほど覚醒時間を延長。
+- 覚醒中の連続撃破でSKY BREAKが使用可能。3撃破後の次のダッシュで周辺の敵に衝撃を与える。
+- 覚醒時には射撃ビームと銃の発光部が金色に変化。
+- ORBITを上空へ浮遊させ、BULWARKの背面弱点と、弱点を狙える有限速度の旋回を追加。ボスの中心コアにも弱点判定を追加。
+- FLOWの名称衝突を避け、旧スコア倍率はCOMBOに改名。アップグレード説明もFLOW基準に更新。
+- 通常は診断HUDを非表示にし、必要なときだけMOVE DEBUGで表示可能。
 
-- Fixed a confirmed directional-movement bug: the world-X movement calculation incorrectly referenced `p.y` (player height) instead of `p.yaw` (camera rotation). This introduced a sideways drift and at some headings could reverse backward input.
-- Backward stick input now consistently moves backward relative to the camera at 0°, 90°, 180°, 270°, 360° and -45° in automated tests.
-- Added a small `MOVE DEBUG` toggle near the radar. It displays `STICK` (the actual touch input), `REQUEST` (the intended forward/back direction), `ACTUAL` (actual world travel relative to camera), `DASH` status and camera angle (`YAW`). `DIRECTION MISMATCH` highlights opposite movement.
-- More reliably reset mobile input on pause, restart, loss of touch pointer capture, and window blur.
-- The overlay is temporary diagnostic instrumentation and can be hidden by tapping `MOVE DEBUG`.
+## 実装・テスト
 
-## High-visibility combat update (v1.1)
+- `node --check game.js`
+- `node test_logic.cjs`
+- `node test_movement.cjs`
+- `node test_visibility.cjs`
+- `node test_pressure.cjs`
+- `node test_flow_drive.cjs`
+- `python test_touch_browser.py`
+- `python test_mobile_drive.py`
 
-- Four bright, simplified enemy bodies: STRIKER red, ORBIT pink, SENTRY yellow, BULWARK white; the boss has a white shell and warm core.
-- Enemy silhouettes and projectiles render with reduced atmospheric fog, remaining visible against the dark arena.
-- Enemy shots are single compact, role-colored orbs. Long warning beams, floor telegraphs and projectile tails were removed.
-- Simultaneous hostile shots are limited to 18 and multi-shot volleys have been reduced.
-- Ambient cyan grid lines have been dimmed; initial sector now has four enemies.
-- No new weapons or systems: this release focuses on clarity and readability.
+Pythonの2つのブラウザテストはChromiumのDOMと実入力を使用するが、**WebGL描画部分はモック**。環境上、実GPUのシェーダー描画を確認できていない。iPhone Safari実機テストも未実施。端末ごとのFPSおよび3D画面の見え方・ゲームバランスは今後の実機評価が必要。
 
-## Game systems
+## 備考
 
-- Six sectors: five escalating procedural enemy encounters, then HELIX CORE.
-- Four enemy classes: STRIKER, ORBIT, SENTRY, BULWARK. Each class attacks at range. The SENTRY charges briefly without an intrusive targeting line.
-- Three energy emitters: VOLT CARBINE (rapid fire), NOVA SCATTER (multi-shot), PRISM LANCER (precision).
-- Velocity-powered kinetic charge. Gain charge by moving and dashing; charge amplifies damage.
-- Dash, slide, double jump, air control, shield regeneration, hit feedback, score combo and kill effects.
-- After each of sectors 1–5, choose from three randomly offered modules; twelve distinct upgrade types can combine.
-- Persistent personal best and victories in localStorage.
-- Adaptive mobile controls, native Web Audio synthesizer, no images/emojis used as enemies.
-
-## Source structure
-
-- `index.html` - page structure and controls.
-- `style.css` - visual design and mobile adaptation.
-- `game.js` - renderer, AI, physics, progression, procedural scene and mobile input.
-- `OVERDRIVE.html` - generated one-file playable build.
-- `build.py` - standalone build script.
-- `test_logic.cjs` - pure Node mock-WebGL logic test (not a real browser test).
-- `QA.md` - implementation and test notes.
-
-## Technology
-
-Native HTML/CSS/JavaScript with WebGL 1.0; procedural indexed geometry, vertex/fragment shaders and Web Audio. No packages to install.
-
-## Important limitations
-
-- Browser GPU rendering and real iPhone touch operation were **not** verified in the current execution environment. Final device testing is still needed.
-- No 3D skeletal character animation or asset-loaded art; models use procedural geometry and animated transforms.
-- Some balancing is provisional and should be tuned using actual player sessions.
-- The arena is hand-designed rather than randomly generated; enemy positions and module rewards vary by run.
+これは**実装初回の試作版**。新しい操作と飛行物理、マップの基盤、敵の弱点処理まで実装したが、グラフィックの最終調整、マップ誘導、戦闘テンポはプレイテストを見て改良する。
