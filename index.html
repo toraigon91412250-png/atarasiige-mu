@@ -54,26 +54,21 @@ const norm=v=>{let l=Math.hypot(...v)||1;return v.map(x=>x/l)},dot=(a,b)=>a.redu
 let VP,drawcalls=0;function draw(g,x,y,z,sx,sy,sz,color,glow=0,ry=0,rz=0,grid=0,clarity=0){let a=mats[g];if(!a)return;gl.uniformMatrix4fv(uni.m,false,model(x,y,z,sx,sy,sz,ry,rz));gl.uniform3fv(uni.tint,color);gl.uniform1f(uni.glow,glow);gl.uniform1f(uni.grid,grid);gl.uniform1f(uni.clarity,clarity);gl.bindBuffer(gl.ARRAY_BUFFER,a.v);gl.enableVertexAttribArray(attr.p);gl.vertexAttribPointer(attr.p,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,a.n);gl.enableVertexAttribArray(attr.n);gl.vertexAttribPointer(attr.n,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,a.i);gl.drawElements(gl.TRIANGLES,a.size,gl.UNSIGNED_SHORT,0);drawcalls++}
 function resize(){vw=window.innerWidth;vh=window.innerHeight;dpr=Math.min(window.devicePixelRatio||1,touchCap?1.45:1.8);dom.world.width=Math.max(1,Math.floor(vw*dpr));dom.world.height=Math.max(1,Math.floor(vh*dpr));gl.viewport(0,0,dom.world.width,dom.world.height)}window.addEventListener('resize',resize);resize();gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.clearColor(.018,.044,.09,1);
 const COLORS={floor:[.036,.091,.15],wall:[.075,.16,.23],metal:[.10,.21,.29],metalHi:[.17,.31,.38],teal:[.21,.91,.82],cyan:[.24,.65,.95],coral:[1,.22,.31],orange:[1,.54,.19],white:[.85,.95,1],purple:[.59,.33,.99],gold:[1,.77,.30],enemyRed:[1,.37,.29],enemyRedLight:[1,.63,.49],enemyYellow:[1,.87,.16],enemyPink:[1,.43,.77],enemyPinkLight:[1,.68,.91],enemyWhite:[.93,.97,1],enemyDark:[.055,.09,.13],enemyFace:[1,1,.95],enemyBoss:[1,.58,.24],floorLine:[.10,.32,.37]};
-const obstacles=[],platforms=[],jumpPads=[{x:0,z:15,r:2.1},{x:-26,z:-21,r:2.1},{x:26,z:19,r:2.1},{x:-8,z:-15,r:2.1}];
-function addObstacle(x,z,w,d,h){obstacles.push({x,z,w,d,h,y0:0,y1:h})}
-[[0,-24,5,4,6],[-20,0,4,5,8],[20,0,4,5,8],[0,24,5,4,6],[-17,-17,4,4,4],[17,17,4,4,4],[17,-17,4,4,4],[-17,17,4,4,4],[-32,-4,2,7,5],[32,4,2,7,5]].forEach(o=>addObstacle(...o));
-function addPlatform(x,z,w,d,top){platforms.push({x,z,w,d,top,y0:top-.38,y1:top})}
-[[-13,-8,5,5,2.9],[13,8,5,5,2.9],[18,-12,4.5,4.5,3.1],[-18,13,4.5,4.5,3.1],[0,0,5,5,3],[-13,-24,5.5,5.5,6],[13,-23,5.5,5.5,6],[1,23,5.5,5.5,6],[24,9,4.5,4.5,6]].forEach(a=>addPlatform(...a));
-const solids=[...obstacles,...platforms];
+// FLAT ARENA TEST: no cover, elevated decks, or jump pads.
+// Retain empty geometry collections so all gameplay collisions explicitly have zero interior solids.
+const obstacles=[],platforms=[],jumpPads=[],solids=[];
 function touchingXZ(x,z,r,s){return Math.abs(x-s.x)<s.w/2+r&&Math.abs(z-s.z)<s.d/2+r}
 function collide(x,z,r=.5){if(Math.abs(x)>40-r||Math.abs(z)>40-r)return true;return obstacles.some(o=>touchingXZ(x,z,r,o))}
 function collide3D(x,z,r,feet,head){if(Math.abs(x)>40-r||Math.abs(z)>40-r)return true;return solids.some(o=>touchingXZ(x,z,r,o)&&feet<o.y1-.035&&head>o.y0+.035)}
 function solidAt(x,y,z,r=.25){return solids.some(o=>touchingXZ(x,z,r,o)&&y+r>o.y0&&y-r<o.y1)}
-function updateVertical(dt){let feet=p.y-1.75,oldFeet=feet,oldHead=feet+1.72;
+function updateVertical(dt){
+ // No interior solids: always land on the main floor (y=0) after a jump or jetpack flight.
  if(p.driveActive){if(input.jetHeld)p.vy=Math.min(12,p.vy+42*dt);else p.vy=Math.max(-4.0,p.vy-48*dt)}
  else p.vy=Math.max(-35,p.vy-25*dt);
- let nextFeet=feet+p.vy*dt,ground=0;
- for(const plat of platforms){if(p.vy<=0&&touchingXZ(p.x,p.z,.36,plat)&&oldFeet>=plat.top-.12&&nextFeet<=plat.top)ground=Math.max(ground,plat.top)}
- if(nextFeet<ground){nextFeet=ground;p.vy=0;p.jumpLeft=2+p.extraJump}
- if(p.vy>0){for(const s of solids){if(touchingXZ(p.x,p.z,.37,s)&&oldHead<=s.y0+.08&&nextFeet+1.72>=s.y0){nextFeet=Math.min(nextFeet,s.y0-1.72);p.vy=0;break}}}
- p.y=clamp(nextFeet+1.75,1.75,19.6);if(p.y>=19.6&&p.vy>0)p.vy=0;
- if(p.padCd>0)p.padCd=Math.max(0,p.padCd-dt);
- if(!p.driveActive&&p.padCd<=0&&p.y<2.2){for(const pad of jumpPads)if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.r){p.vy=19;p.jumpLeft=1+p.extraJump;p.padCd=1.25;spawnBurst(p.x,.35,p.z,COLORS.gold,14,5);tone(280,.13,'triangle',.04,920);break}}
+ let nextFeet=p.y-1.75+p.vy*dt;
+ if(nextFeet<=0){nextFeet=0;if(p.vy<=0){p.vy=0;p.jumpLeft=2+p.extraJump}}
+ p.y=clamp(nextFeet+1.75,1.75,19.6);
+ if(p.y>=19.6&&p.vy>0)p.vy=0;
 }
 const weapons=[{name:'VOLT CARBINE',clip:32,rate:.105,damage:13,range:60,pellets:1,spread:.018,reload:1.3,color:COLORS.teal},{name:'NOVA SCATTER',clip:9,rate:.69,damage:9,range:27,pellets:9,spread:.11,reload:1.55,color:COLORS.orange},{name:'PRISM LANCER',clip:7,rate:.83,damage:72,range:85,pellets:1,spread:.003,reload:1.9,color:COLORS.purple}];
 const upgrades=[{id:'flux',name:'FLUX ENGINE',label:'MOBILITY',desc:'最高速度 +16%。FLOWの獲得量 +35%。'},{id:'chain',name:'ARC CASCADE',label:'SYNERGY',desc:'射撃命中時、近くの別の敵にも電撃が連鎖する。'},{id:'dash',name:'BLINK IMPACT',label:'MOBILITY',desc:'ダッシュ再使用が速くなる。軌跡上の敵に衝撃を与える。'},{id:'haste',name:'OVER CLOCK',label:'FIRE RATE',desc:'全エミッターの連射速度 +22%。'},{id:'aerial',name:'SKYBOUND',label:'AIR CONTROL',desc:'追加ジャンプ +1。空中からの攻撃ダメージ +20%。'},{id:'armor',name:'LATTICE SHIELD',label:'DEFENSE',desc:'最大シールド +30。シールドを即時回復。'},{id:'siphon',name:'VITAL SIPHON',label:'SUSTAIN',desc:'敵撃破時に体力を回復。'},{id:'pierce',name:'PHASE SLICER',label:'DAMAGE',desc:'全エミッターの攻撃 +20%。PRISMが敵を貫通。'},{id:'echo',name:'ECHO CHAMBER',label:'SYNERGY',desc:'4発に1発、追加のエネルギー弾を発射。'},{id:'shock',name:'ION BURST',label:'AREA',desc:'敵撃破時に周囲にもダメージを与える。'},{id:'battery',name:'CAPACITOR',label:'KINETIC',desc:'すべての攻撃ダメージ +15%。'},{id:'heal',name:'REPAIR PULSE',label:'SUSTAIN',desc:'体力を35回復。最大体力 +12。'}];
@@ -178,24 +173,14 @@ const stick=$('stickZone'),knob=$('stickKnob'),look=$('lookZone');function moveS
 stick.addEventListener('pointerdown',e=>{if(mode!=='playing'||input.stickId!==null)return;e.preventDefault();input.stickId=e.pointerId;stick.setPointerCapture(e.pointerId);moveStick(e)});stick.addEventListener('pointermove',e=>{if(e.pointerId===input.stickId)moveStick(e)});function releaseStick(e){if(e.pointerId===input.stickId){input.stickId=null;input.dx=0;input.dz=0;moveDebug.stickY=0;moveDebug.stickX=0;knob.style.transform='translate(0,0)'}}stick.addEventListener('pointerup',releaseStick);stick.addEventListener('pointercancel',releaseStick);stick.addEventListener('lostpointercapture',releaseStick);
 look.addEventListener('pointerdown',e=>{e.preventDefault();input.lookId=e.pointerId;input.lastLook=[e.clientX,e.clientY];look.setPointerCapture(e.pointerId)});look.addEventListener('pointermove',e=>{if(e.pointerId!==input.lookId||mode!=='playing')return;let prev=input.lastLook;p.yaw+=(e.clientX-prev[0])*.005;p.pitch=clamp(p.pitch-(e.clientY-prev[1])*.0045,-1.3,1.3);input.lastLook=[e.clientX,e.clientY]});function releaseLook(e){if(e.pointerId===input.lookId){input.lookId=null;input.lastLook=null}}look.addEventListener('pointerup',releaseLook);look.addEventListener('pointercancel',releaseLook);look.addEventListener('lostpointercapture',releaseLook);
 function drawWorld(t){drawcalls=0;gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);let yaw=p?p.yaw:Math.sin(t*.13)*.4,pitch=p?p.pitch:-.11,eye=p?[p.x,p.y,p.z]:[0,3.5,7],f=[Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)];let jitter=shake>0?rnd(-shake,shake):0;eye=[eye[0]+jitter,eye[1]+jitter*.5,eye[2]];let view=lookAt(eye,[eye[0]+f[0],eye[1]+f[1],eye[2]+f[2]]),proj=perspective((touchCap?79:75)*Math.PI/180,vw/vh,.07,180);VP=mul(proj,view);gl.uniformMatrix4fv(uni.vp,false,VP);gl.uniform3fv(uni.cam,eye);
- // Arena structure: raised graphite platform, light-pipes and brutalist monoliths.
- draw('box',0,-2.3,0,43,2.1,43,COLORS.floor,0,0,0,1);draw('box',0,-.16,0,41,.17,41,COLORS.metal,0,0,0,1);
- for(let i=-36;i<=36;i+=8){draw('box',i,.035,-40,.025,.024,40,COLORS.floorLine,.08);draw('box',-40,.035,i,40,.024,.025,COLORS.floorLine,.08)}
- for(let i=0;i<4;i++){const s=i===0?-1:i===1?1:0;if(i<2){draw('box',s*41,7,0,1.2,7,41,COLORS.wall);draw('box',s*40,1.2,0,.12,.12,40,COLORS.floorLine,.16)}else{const n=i===2?-1:1;draw('box',0,7,n*41,41,7,1.2,COLORS.wall);draw('box',0,1.2,n*40,40,.12,.12,COLORS.floorLine,.16)}}
- for(let i=-36;i<=36;i+=8){for(let side of [-1,1]){draw('box',i,6.5,side*40,.10,5,.12,COLORS.metalHi);draw('box',side*40,6.5,i,.12,5,.10,COLORS.metalHi)}}
- for(let [i,o] of obstacles.entries()){draw('box',o.x,o.h/2,o.z,o.w/2,o.h/2,o.d/2,COLORS.wall);draw('box',o.x,o.h+.16,o.z,o.w/2+.1,.1,o.d/2+.1,COLORS.metalHi);draw('box',o.x,o.h*.52,o.z+o.d/2+.04,o.w*.33,.075,.045,COLORS.floorLine,.13);draw('box',o.x,o.h*.52,o.z-o.d/2-.04,o.w*.33,.075,.045,COLORS.floorLine,.13)}
- for(let i=0;i<14;i++){let a=i*TAU/14,rr=34,x=Math.sin(a)*rr,z=Math.cos(a)*rr;draw('cyl',x,.03,z,.33,.035,.33,COLORS.floorLine,.14);draw('box',x,1.6,z,.15,1.55,.15,COLORS.metalHi);draw('box',x,3.15,z,.19,.1,.19,COLORS.floorLine,.25)}
- // Two accessible elevated tiers; 3D physics uses the same volumes as these visible platforms.
- for(const platform of platforms){const upper=platform.top>4;const deck=upper?COLORS.metalHi:COLORS.metal;
-  draw('box',platform.x,platform.top-.19,platform.z,platform.w/2,.19,platform.d/2,deck,.08);
-  for(const side of [-1,1]){draw('box',platform.x+side*(platform.w/2-.08),platform.top+.055,platform.z,.08,.055,platform.d/2,upper?COLORS.gold:COLORS.teal,.28);
-   draw('box',platform.x,platform.top+.055,platform.z+side*(platform.d/2-.08),platform.w/2,.055,.08,upper?COLORS.gold:COLORS.teal,.28)}
-  for(const side of [-1,1]){draw('box',platform.x+side*(platform.w*.35),platform.top/2,platform.z+side*(platform.d*.34),.17,platform.top/2-.2,.17,COLORS.wall)}
+ // Flat arena: only floor and the four perimeter walls remain as level geometry.
+ // Remove the overlapping central rings/grid/decks/pads that may cause Z-fighting near spawn.
+ draw('box',0,-2.3,0,43,2.1,43,COLORS.floor,0,0,0,1);
+ draw('box',0,-.16,0,41,.17,41,COLORS.metal,0,0,0,1);
+ for(let i=0;i<4;i++){const side=i<2?(i===0?-1:1):0;
+  if(i<2)draw('box',side*41,7,0,1.2,7,41,COLORS.wall);
+  else draw('box',0,7,(i===2?-1:1)*41,41,7,1.2,COLORS.wall);
  }
- for(const pad of jumpPads){draw('cyl',pad.x,.07,pad.z,1.65,.09,1.65,COLORS.gold,.18);draw('cyl',pad.x,.17,pad.z,1.08,.032,1.08,COLORS.coral,.27);
-  draw('cyl',pad.x,.23,pad.z,.49,.04,.49,COLORS.white,.28)}
- // central generator dais + distinct neon rings
- draw('cyl',0,.06,0,9,.14,9,COLORS.metalHi);draw('cyl',0,.11,0,6,.1,6,COLORS.floor);for(let k=0;k<8;k++){let a=k*TAU/8;draw('box',Math.sin(a)*9,.24,Math.cos(a)*9,1.2,.028,.1,COLORS.floorLine,.14,a)}
  for(let e of enemy)if(!e.dead)drawEnemy(e,t);for(let b of bullets){draw('sphere',b.x,b.y,b.z,b.r*.86,b.r*.86,b.r*.86,b.col,.95,0,0,0,1)}
  for(let e of effects){if(e.type==='beam'){let dx=e.x2-e.x,dy=e.y2-e.y,dz=e.z2-e.z,l=Math.hypot(dx,dy,dz);draw('box',(e.x+e.x2)/2,(e.y+e.y2)/2,(e.z+e.z2)/2,.045,.055,l/2,e.col,1.3,Math.atan2(dx,dz))}else if(e.type==='ring'){for(let i=0;i<10;i++){let a=i*TAU/10,r=.5+(1-e.life/.45)*5;draw('box',e.x+Math.sin(a)*r,.1,e.z+Math.cos(a)*r,.9,.025,.08,e.col,.9,a)}}}
  for(let a of particles)draw('box',a.x,a.y,a.z,a.s,a.s,a.s,a.col,.9);
@@ -250,6 +235,6 @@ function drawEnemy(e,t){
 function drawWeapon(eye,yaw,pitch,t){let forward=[Math.sin(yaw),0,-Math.cos(yaw)],right=[Math.cos(yaw),0,Math.sin(yaw)],sway=Math.sin(t*11)*(Math.hypot(p.dx,p.dz)/20)*.018, recoil=Math.max(0,p.fireCd-.03)*.22,xx=eye[0]+forward[0]*(.85-recoil)+right[0]*.41,zz=eye[2]+forward[2]*(.85-recoil)+right[2]*.41,yy=eye[1]-.44+Math.sin(t*12)*.015+sway;const driveCol=p.driveActive?COLORS.gold:null;if(p.weapon===0){draw('box',xx,yy,zz,.21,.16,.56,COLORS.metalHi,0,yaw);draw('box',xx,yy+.13,zz,.13,.07,.35,driveCol||COLORS.teal,.65,yaw);draw('box',xx,yy-.17,zz,.10,.14,.20,COLORS.wall,0,yaw);draw('sphere',xx+forward[0]*.66,yy,zz+forward[2]*.66,.12,.12,.12,driveCol||COLORS.teal,1.2)}else if(p.weapon===1){draw('box',xx,yy,zz,.28,.18,.46,COLORS.metalHi,0,yaw);for(let i of [-1,1])draw('box',xx+right[0]*i*.18,yy,zz+right[2]*i*.18,.07,.12,.52,driveCol||COLORS.orange,.6,yaw);draw('sphere',xx+forward[0]*.6,yy,zz+forward[2]*.6,.22,.14,.2,driveCol||COLORS.orange,1.2)}else{draw('box',xx,yy,zz,.16,.21,.70,COLORS.metalHi,0,yaw);draw('box',xx,yy+.15,zz,.09,.07,.54,driveCol||COLORS.purple,1,yaw);draw('sphere',xx+forward[0]*.78,yy,zz+forward[2]*.78,.14,.14,.17,driveCol||COLORS.purple,1.5)}}
 let prev=performance.now();function loop(ts){let dt=Math.min((ts-prev)/1000,.05);prev=ts;update(dt);drawWorld(ts/1000);requestAnimationFrame(loop)}requestAnimationFrame(loop);
 // A small QA surface for automated tests; never grants gameplay advantages.
-window.__OVERDRIVE_QA__={getMovementDebug:()=>({...moveDebug,playerX:p?.x,playerZ:p?.z,yaw:p?.yaw,inputX:input.dx,inputZ:input.dz,keys:[...input.keys],moveAxis:moveAxis()}),setYaw:(a)=>{if(p)p.yaw=a},getState:()=>({mode,wave,score,enemies:enemy.length,health:p?.health,shield:p?.shield,flowCharge:p?.flowCharge,driveActive:p?.driveActive,driveTime:p?.driveTime,height:p?.y,vy:p?.vy,jetHeld:input.jetHeld,padCd:p?.padCd,weapon:p?.weapon,canvasWidth:dom.world.width,canvasHeight:dom.world.height,drawcalls,projectiles:bullets.length,enemyRoles:enemy.filter(e=>!e.dead).map(e=>e.type)}),start:startRun,upgrade:applyUpgrade,setInput:(x,z)=>{input.dx=x;input.dz=z},setJet:(held)=>{input.jetHeld=held},setPosition:(x,z,eyeY)=>{p.x=x;p.z=z;p.y=eyeY;p.vy=0},giveFlow:(v)=>{p.flowCharge=clamp(v,0,100)},activateDrive,platforms:()=>platforms.map(v=>({...v})),jump:tryJump,simFrame:(dt)=>update(dt),damage:(n)=>p&&hurt(n),skipSector:()=>{if(mode==='playing'){enemy=[];update(.01)}}};
+window.__OVERDRIVE_QA__={getMovementDebug:()=>({...moveDebug,playerX:p?.x,playerZ:p?.z,yaw:p?.yaw,inputX:input.dx,inputZ:input.dz,keys:[...input.keys],moveAxis:moveAxis()}),setYaw:(a)=>{if(p)p.yaw=a},getState:()=>({mode,wave,score,enemies:enemy.length,health:p?.health,shield:p?.shield,flowCharge:p?.flowCharge,driveActive:p?.driveActive,driveTime:p?.driveTime,height:p?.y,vy:p?.vy,jetHeld:input.jetHeld,padCd:p?.padCd,weapon:p?.weapon,canvasWidth:dom.world.width,canvasHeight:dom.world.height,drawcalls,projectiles:bullets.length,enemyRoles:enemy.filter(e=>!e.dead).map(e=>e.type)}),start:startRun,upgrade:applyUpgrade,setInput:(x,z)=>{input.dx=x;input.dz=z},setJet:(held)=>{input.jetHeld=held},setPosition:(x,z,eyeY)=>{p.x=x;p.z=z;p.y=eyeY;p.vy=0},giveFlow:(v)=>{p.flowCharge=clamp(v,0,100)},activateDrive,platforms:()=>platforms.map(v=>({...v})),arenaGeometry:()=>({obstacles:obstacles.length,platforms:platforms.length,jumpPads:jumpPads.length,solids:solids.length}),jump:tryJump,simFrame:(dt)=>update(dt),damage:(n)=>p&&hurt(n),skipSector:()=>{if(mode==='playing'){enemy=[];update(.01)}}};
 })();
 </script></body></html>
