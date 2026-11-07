@@ -27,10 +27,19 @@ The optional Google Font is cosmetic and falls back to system fonts without a ne
 
 Landscape orientation is recommended for iPhone. Please disable silent mode to hear audio in browsers that respect hardware mute.
 
+## High-visibility combat update (v1.1)
+
+- Four bright, simplified enemy bodies: STRIKER red, ORBIT pink, SENTRY yellow, BULWARK white; the boss has a white shell and warm core.
+- Enemy silhouettes and projectiles render with reduced atmospheric fog, remaining visible against the dark arena.
+- Enemy shots are single compact, role-colored orbs. Long warning beams, floor telegraphs and projectile tails were removed.
+- Simultaneous hostile shots are limited to 18 and multi-shot volleys have been reduced.
+- Ambient cyan grid lines have been dimmed; initial sector now has four enemies.
+- No new weapons or systems: this release focuses on clarity and readability.
+
 ## Game systems
 
 - Six sectors: five escalating procedural enemy encounters, then HELIX CORE.
-- Four enemy classes: STRIKER, ORBIT, SENTRY, BULWARK. Each class attacks at range. The SENTRY displays its targeting line before firing.
+- Four enemy classes: STRIKER, ORBIT, SENTRY, BULWARK. Each class attacks at range. The SENTRY charges briefly without an intrusive targeting line.
 - Three energy emitters: VOLT CARBINE (rapid fire), NOVA SCATTER (multi-shot), PRISM LANCER (precision).
 - Velocity-powered kinetic charge. Gain charge by moving and dashing; charge amplifies damage.
 - Dash, slide, double jump, air control, shield regeneration, hit feedback, score combo and kill effects.
