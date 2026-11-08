@@ -1,25 +1,22 @@
-# OVERDRIVE v2.0-alpha2-flat — QA
+# KINETIC AIM v2.1-alpha3 QA — 2026-11-08
 
-## 目的
+## 自動テスト結果
 
-遮蔽物、立体足場、装飾による視認性・当たり判定・点滅問題を切り分ける。敵のバランス調整は次段階。
+- `node --check game.js` — PASS
+- `node test_kinetic_aim.cjs --touch` — PASS
+- `node test_kinetic_aim.cjs` — PASS
+- `node test_flat_arena.cjs` — PASS
+- `node test_logic.cjs` — PASS
+- `node test_movement.cjs` — PASS
+- `node test_visibility.cjs` — PASS
+- `python test_touch_browser.py` — PASS（WebGLモック）
+- `python test_mobile_drive.py` — PASS（WebGLモック）
+- `python test_mobile_aim.py` — PASS（WebGLモック）
 
-## 変更
+## 確認ポイント
 
-障害物10・足場9・ジャンプパッド4・柱14・発光中央リング・グリッド線を撤去。地形は床と外周壁のみ。ゲーム内の `obstacles`, `platforms`, `jumpPads`, `solids` はいずれも空。飛行と床着地を維持。
-
-## 通過した自動テスト
-
-- `node --check game.js`
-- 旧障害物と足場の位置14か所で通行可能
-- ジャンプパッド誤起動なし
-- FLOW DRIVE 上昇と解除後の着地
-- 外周境界と描画呼び出し
-- セクター進行・アップグレード・ボス・勝敗
-- カメラ向き別の後退入力
-- 敵弾上限と敵の識別色
-- Chromiumタッチ／DRIVE入力（WebGL描画はモック）
+スマホ側では約4°外れた照準で発砲して敵に命中することを確認。PCの同条件では通常モードの補正対象にならない。通常と覚醒の補正範囲はそれぞれスマホ9/14°、PC2/4°。背後・範囲外の敵には補正がない。近くの敵への照準減速、直接命中する手動狙いの維持も確認。
 
 ## 未確認
 
-実GPUでの表示・点滅解消、iPhone Safari実機での操作、敵の難易度・覚醒の生存性。
+本テスト環境のWebGLは無効なので実GPU描画は未確認。iPhone Safari実機での視覚的な品質とゲームバランスも未確認。
