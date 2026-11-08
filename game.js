@@ -278,8 +278,99 @@ function drawEnemy(e,t){
  draw('box',e.x,e.y+e.r+1.40,e.z,width,.057,.053,COLORS.enemyDark,0,0,0,0,1);
  draw('box',e.x-width*(1-hp),e.y+e.r+1.42,e.z,width*hp,.068,.057,role,.20,0,0,0,1);
 }
-function drawWeapon(eye,yaw,pitch,t){let forward=[Math.sin(yaw),0,-Math.cos(yaw)],right=[Math.cos(yaw),0,Math.sin(yaw)],sway=Math.sin(t*11)*(Math.hypot(p.dx,p.dz)/20)*.018, recoil=Math.max(0,p.fireCd-.03)*.22,xx=eye[0]+forward[0]*(.85-recoil)+right[0]*.41,zz=eye[2]+forward[2]*(.85-recoil)+right[2]*.41,yy=eye[1]-.44+Math.sin(t*12)*.015+sway;const driveCol=p.driveActive?COLORS.gold:null;if(p.weapon===0){draw('box',xx,yy,zz,.21,.16,.56,COLORS.metalHi,0,yaw);draw('box',xx,yy+.13,zz,.13,.07,.35,driveCol||COLORS.teal,.65,yaw);draw('box',xx,yy-.17,zz,.10,.14,.20,COLORS.wall,0,yaw);draw('sphere',xx+forward[0]*.66,yy,zz+forward[2]*.66,.12,.12,.12,driveCol||COLORS.teal,1.2)}else if(p.weapon===1){draw('box',xx,yy,zz,.28,.18,.46,COLORS.metalHi,0,yaw);for(let i of [-1,1])draw('box',xx+right[0]*i*.18,yy,zz+right[2]*i*.18,.07,.12,.52,driveCol||COLORS.orange,.6,yaw);draw('sphere',xx+forward[0]*.6,yy,zz+forward[2]*.6,.22,.14,.2,driveCol||COLORS.orange,1.2)}else{draw('box',xx,yy,zz,.16,.21,.70,COLORS.metalHi,0,yaw);draw('box',xx,yy+.15,zz,.09,.07,.54,driveCol||COLORS.purple,1,yaw);draw('sphere',xx+forward[0]*.78,yy,zz+forward[2]*.78,.14,.14,.17,driveCol||COLORS.purple,1.5)}}
+// WEAPON EVOLUTION: compact 3D first-person silhouettes with real animated parts.
+// These energy weapons deliberately use charge, vents and folding fins, not ejected casings.
+const GUN={dark:[.055,.084,.13],body:[.13,.18,.25],mid:[.22,.31,.40],edge:[.46,.58,.66],bone:[.56,.66,.70],white:[.85,.93,.94],amber:[.95,.55,.20],lilac:[.62,.38,.9]};
+function drawWeapon(eye,yaw,pitch,t){
+ const wi=p.weapon,w=weapons[wi],fw=[Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)],rt=[Math.cos(yaw),0,Math.sin(yaw)];
+ const up=[-Math.sin(yaw)*Math.sin(pitch),Math.cos(pitch),Math.cos(yaw)*Math.sin(pitch)];
+ const speed=Math.min(1,Math.hypot(p.dx,p.dz)/22),bob=Math.sin(t*11)*speed*.012;
+ const kick=p.weaponKick,flash=p.weaponFlash,energy=p.driveActive?COLORS.gold:w.color;
+ const rprogress=p.reload>0?clamp(1-p.reload/w.reload,0,1):0;
+ const recharge=p.reload>0?Math.sin(Math.PI*rprogress):0;
+ const surge=p.driveActive?1:0;
+ const at=1.43-kick*.25,side=.43+kick*.06,below=-.43-kick*.10+Math.sin(t*8)*.008+bob-recharge*.05;
+ const baseX=eye[0]+fw[0]*at+rt[0]*side+up[0]*below;
+ const baseY=eye[1]+fw[1]*at+rt[1]*side+up[1]*below;
+ const baseZ=eye[2]+fw[2]*at+rt[2]*side+up[2]*below;
+ let pieces=0;
+ function part(shape,x,y,z,sx,sy,sz,col=GUN.body,glow=0,roll=0){
+  // local +z is along the barrel; pitch stays level to keep sight alignment on iPhone.
+  draw(shape,baseX+rt[0]*x+fw[0]*z+up[0]*y,baseY+fw[1]*z+up[1]*y,baseZ+rt[2]*x+fw[2]*z+up[2]*y,sx,sy,sz,col,glow,yaw,roll);pieces++;
+ }
+ function paired(x,y,z,sx,sy,sz,col=GUN.mid,glow=0){for(const side of [-1,1])part('box',side*x,y,z,sx,sy,sz,col,glow)}
+ // All weapons have small rear grips/silhouettes so the main body does not cover center view.
+ if(wi===0){ // VOLT CARBINE: narrow stepped receiver + external energy spine.
+  part('box',0,0,-.07,.235,.16,.43,GUN.body);
+  part('box',0,.105,.02,.19,.075,.38,GUN.mid);
+  part('box',0,.20,.06,.11,.042,.28,GUN.dark);
+  paired(.245,.035,.07,.065,.13,.33,GUN.edge);
+  paired(.32,-.038,.08,.075,.06,.25,GUN.mid);
+  paired(.13,-.18,-.18,.075,.19,.14,GUN.dark);
+  part('box',0,-.25,-.17,.12,.18,.12,GUN.body);
+  part('box',0,-.38,-.22,.10,.085,.09,GUN.edge);
+  part('box',0,.02,-.53,.205,.12,.13,GUN.mid);
+  paired(.21,.008,-.55,.06,.09,.24,GUN.edge);
+  part('box',0,.08,-.66,.125,.055,.24,GUN.dark);
+  part('box',0,.005,.49,.12,.12,.32,GUN.dark);
+  paired(.132,.038,.52,.032,.10,.30,GUN.edge);
+  part('box',0,.16,.28,.09,.046,.29,energy,.62+surge*.8);
+  for(let i=0;i<3;i++)part('box',.202,.11,-.10+i*.15,.027,.027,.040,energy,.50+surge*.6);
+  // Reload cycle physically ejects and reseats the luminous cell, rather than a casing.
+  part('box',-.07,-.24-recharge*.17,-.16,.080,.14,.11,GUN.dark);
+  part('box',-.082,-.25-recharge*.17,-.16,.025,.090,.071,energy,.6);
+  // In DRIVE the longitudinal emitters open outwards, charging faster on consecutive hits.
+  paired(.18+surge*.11,.13,.34,.043,.048,.27,energy,.53+surge*.75);
+  part('cyl',0,0,.85,.082,.092,.082,energy,1.1+surge*.65);
+ }else if(wi===1){ // BREACH: squat industrial emitter with visible heat-release shutters.
+  part('box',0,.01,-.07,.315,.20,.37,GUN.body);
+  part('box',0,.17,.02,.34,.082,.33,GUN.mid);
+  paired(.31,-.018,.01,.067,.15,.34,GUN.edge);
+  part('box',0,-.23,-.24,.13,.20,.14,GUN.dark);
+  part('box',0,-.34,-.27,.11,.092,.11,GUN.mid);
+  part('box',0,.035,-.49,.23,.15,.17,GUN.dark);
+  paired(.205,-.08,-.50,.046,.12,.25,GUN.mid);
+  paired(.17,.01,.40,.115,.13,.37,GUN.dark);
+  paired(.17,.11,.42,.081,.078,.30,GUN.bone);
+  paired(.17,.005,.75,.10,.10,.09,GUN.edge);
+  paired(.17,.005,.83,.075,.075,.04,energy,1.1+surge*.6);
+  part('box',0,.22,.06,.13,.052,.23,GUN.dark);
+  part('box',0,.265,.26,.085,.023,.09,GUN.edge);
+  for(let i=0;i<3;i++)part('box',-.34,.075,-.21+i*.16,.024,.065,.047,energy,.7);
+  // Sliding thermal shutters open while venting, and remain partially open in DRIVE.
+  paired(.335+recharge*.16+surge*.07,.17,.15,.06,.11,.29,GUN.edge);
+  paired(.39+recharge*.14+surge*.08,.19,.15,.017,.07,.24,energy,.70);
+  part('box',0,-.06,.37,.10,.08,.32,GUN.mid);
+ }else{ // PRISM LANCER: slim split rails and animated precision crystal.
+  part('box',0,-.02,-.09,.18,.15,.38,GUN.body);
+  part('box',0,.16,.005,.17,.058,.34,GUN.mid);
+  part('box',0,-.20,-.21,.11,.18,.10,GUN.dark);
+  part('box',0,-.29,-.22,.11,.08,.08,GUN.edge);
+  paired(.19,.045,.05,.055,.12,.32,GUN.edge);
+  part('box',0,.25,.09,.095,.08,.14,GUN.dark);
+  part('box',0,.31,.19,.055,.030,.10,energy,.38);
+  part('box',0,.00,-.49,.17,.11,.17,GUN.mid);
+  paired(.17,-.035,-.56,.065,.072,.23,GUN.body);
+  // Two precision tines separated by a visible beam, like a tuning fork.
+  const open=surge*.10+recharge*.13;
+  paired(.19+open,.012,.58,.064,.076,.43,GUN.edge);
+  paired(.18+open,.015,.83,.077,.077,.11,GUN.white);
+  part('box',0,.02,.57,.034,.044,.45,energy,.9+surge*.60);
+  part('sphere',0,.04,.095,.155,.155,.16,energy,p.prismFocus*.85+.5+surge*.7);
+  paired(.29+open,.12,.13,.045,.09,.26,GUN.mid);
+  paired(.32+open,.19,.19,.025,.045,.20,energy,.40+surge*.6);
+  part('cyl',0,.035,1.01,.070,.08,.07,energy,1.3+surge*.75);
+ }
+ // Restrained muzzle flash: 2-3 luminous meshes, immediately gone after firing.
+ if(flash>0){const peak=clamp(flash/([.08,.16,.21][wi]),0,1);
+  const length=[.87,.89,1.03][wi];
+  part('sphere',0,.01,length,.09*peak,.08*peak,.09*peak,energy,1.6);
+  if(wi===1)paired(.18,.01,length,.055*peak,.055*peak,.14*peak,energy,1.1);
+  else part('box',0,.01,length+.14,.03*peak,.035*peak,.18*peak,energy,1.25);
+ }
+ return pieces;
+}
 let prev=performance.now();function loop(ts){let dt=Math.min((ts-prev)/1000,.05);prev=ts;update(dt);drawWorld(ts/1000);requestAnimationFrame(loop)}requestAnimationFrame(loop);
 // A small QA surface for automated tests; never grants gameplay advantages.
-window.__OVERDRIVE_QA__={getMovementDebug:()=>({...moveDebug,playerX:p?.x,playerZ:p?.z,yaw:p?.yaw,inputX:input.dx,inputZ:input.dz,keys:[...input.keys],moveAxis:moveAxis()}),setYaw:(a)=>{if(p)p.yaw=a},setPitch:(a)=>{if(p)p.pitch=a},getState:()=>({mode,wave,score,enemies:enemy.length,health:p?.health,shield:p?.shield,flowCharge:p?.flowCharge,driveActive:p?.driveActive,driveTime:p?.driveTime,height:p?.y,vy:p?.vy,jetHeld:input.jetHeld,padCd:p?.padCd,weapon:p?.weapon,canvasWidth:dom.world.width,canvasHeight:dom.world.height,drawcalls,projectiles:bullets.length,aimShots:p?.aimShots,aimHits:p?.aimHits,aimTargetId:p?.aimLockId,enemyRoles:enemy.filter(e=>!e.dead).map(e=>e.type)}),start:startRun,upgrade:applyUpgrade,setInput:(x,z)=>{input.dx=x;input.dz=z},setJet:(held)=>{input.jetHeld=held},setPosition:(x,z,eyeY)=>{p.x=x;p.z=z;p.y=eyeY;p.vy=0},giveFlow:(v)=>{p.flowCharge=clamp(v,0,100)},activateDrive,aimProbe:()=>{const t=aimCandidate();return {targetId:t?.enemy.id??null,angleDeg:t?Math.round(t.angle*180/Math.PI*100)/100:null,coneDeg:p?aimCone()*180/Math.PI:0,lookScale:aimLookScale(),power:p?assistedDirection([p.x,p.y-.06,p.z],facing(),weapons[p.weapon]).power:0,enemyHp:enemy[0]?.hp??null}},setAimScenario:(x,z,y=1.1,type='sentry')=>{enemy=[];spawnEnemy(type,x,z);enemy[0].y=y;enemy[0].hp=10000;enemy[0].max=10000;enemy[0].cd=1e6;p.aimLockId=null},shootOnce:()=>{p.fireCd=0;shoot();return enemy[0]?.hp},platforms:()=>platforms.map(v=>({...v})),arenaGeometry:()=>({obstacles:obstacles.length,platforms:platforms.length,jumpPads:jumpPads.length,solids:solids.length}),jump:tryJump,simFrame:(dt)=>update(dt),damage:(n)=>p&&hurt(n),skipSector:()=>{if(mode==='playing'){enemy=[];update(.01)}}};
+window.__OVERDRIVE_QA__={getMovementDebug:()=>({...moveDebug,playerX:p?.x,playerZ:p?.z,yaw:p?.yaw,inputX:input.dx,inputZ:input.dz,keys:[...input.keys],moveAxis:moveAxis()}),setYaw:(a)=>{if(p)p.yaw=a},setPitch:(a)=>{if(p)p.pitch=a},getState:()=>({mode,wave,score,enemies:enemy.length,health:p?.health,shield:p?.shield,flowCharge:p?.flowCharge,driveActive:p?.driveActive,driveTime:p?.driveTime,height:p?.y,vy:p?.vy,jetHeld:input.jetHeld,padCd:p?.padCd,weapon:p?.weapon,ammo:p?.ammo?.[p.weapon],reloading:p?.reload,weaponKick:p?.weaponKick,weaponFlash:p?.weaponFlash,voltChain:p?.voltChain,prismFocus:p?.prismFocus,weaponHeat:p?.weaponHeat,canvasWidth:dom.world.width,canvasHeight:dom.world.height,drawcalls,projectiles:bullets.length,aimShots:p?.aimShots,aimHits:p?.aimHits,aimTargetId:p?.aimLockId,enemyRoles:enemy.filter(e=>!e.dead).map(e=>e.type)}),start:startRun,upgrade:applyUpgrade,setInput:(x,z)=>{input.dx=x;input.dz=z},setJet:(held)=>{input.jetHeld=held},setPosition:(x,z,eyeY)=>{p.x=x;p.z=z;p.y=eyeY;p.vy=0},giveFlow:(v)=>{p.flowCharge=clamp(v,0,100)},activateDrive,aimProbe:()=>{const t=aimCandidate();return {targetId:t?.enemy.id??null,angleDeg:t?Math.round(t.angle*180/Math.PI*100)/100:null,coneDeg:p?aimCone()*180/Math.PI:0,lookScale:aimLookScale(),power:p?assistedDirection([p.x,p.y-.06,p.z],facing(),weapons[p.weapon]).power:0,enemyHp:enemy[0]?.hp??null}},setAimScenario:(x,z,y=1.1,type='sentry')=>{enemy=[];spawnEnemy(type,x,z);enemy[0].y=y;enemy[0].hp=10000;enemy[0].max=10000;enemy[0].cd=1e6;p.aimLockId=null},shootOnce:()=>{p.fireCd=0;shoot();return enemy[0]?.hp},setWeapon:(n)=>swapWeapon(n),triggerReload:reload,renderWeaponTest:()=>{if(!p)return 0;return drawWeapon([p.x,p.y,p.z],p.yaw,p.pitch,now)},addAimEnemy:(x,z,y=1.1,type='sentry')=>{spawnEnemy(type,x,z);const e=enemy[enemy.length-1];e.y=y;e.hp=10000;e.max=10000;e.cd=1e6;return e.id},getEnemies:()=>enemy.map(e=>({id:e.id,type:e.type,hp:e.hp,x:e.x,z:e.z,stagger:e.stagger})),platforms:()=>platforms.map(v=>({...v})),arenaGeometry:()=>({obstacles:obstacles.length,platforms:platforms.length,jumpPads:jumpPads.length,solids:solids.length}),jump:tryJump,simFrame:(dt)=>update(dt),damage:(n)=>p&&hurt(n),skipSector:()=>{if(mode==='playing'){enemy=[];update(.01)}}};
 })();

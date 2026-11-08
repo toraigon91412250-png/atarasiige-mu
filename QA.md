@@ -1,22 +1,12 @@
-# KINETIC AIM v2.1-alpha3 QA — 2026-11-08
+# OVERDRIVE v2.2-alpha4 — WEAPON EVOLUTION QA
 
-## 自動テスト結果
+- JavaScript構文チェック：PASS
+- 3武器のモデル生成：VOLT 27、BREACH 27、PRISM 22パーツ：PASS
+- 3武器の直接命中と射撃反動・短時間フラッシュ：PASS
+- リロード状態進行、弾補充、武器切替：PASS
+- VOLT SURGE最大6段・有効期限：PASS
+- PRISM FOCUS蓄積・射撃時消費：PASS
+- FLOW DRIVEと飛行・更地の整合：PASS
+- iPhone横画面相当の投影計算。中央照準を武器が塞がない：PASS
 
-- `node --check game.js` — PASS
-- `node test_kinetic_aim.cjs --touch` — PASS
-- `node test_kinetic_aim.cjs` — PASS
-- `node test_flat_arena.cjs` — PASS
-- `node test_logic.cjs` — PASS
-- `node test_movement.cjs` — PASS
-- `node test_visibility.cjs` — PASS
-- `python test_touch_browser.py` — PASS（WebGLモック）
-- `python test_mobile_drive.py` — PASS（WebGLモック）
-- `python test_mobile_aim.py` — PASS（WebGLモック）
-
-## 確認ポイント
-
-スマホ側では約4°外れた照準で発砲して敵に命中することを確認。PCの同条件では通常モードの補正対象にならない。通常と覚醒の補正範囲はそれぞれスマホ9/14°、PC2/4°。背後・範囲外の敵には補正がない。近くの敵への照準減速、直接命中する手動狙いの維持も確認。
-
-## 未確認
-
-本テスト環境のWebGLは無効なので実GPU描画は未確認。iPhone Safari実機での視覚的な品質とゲームバランスも未確認。
+制限：WebGL実GPU表示・iPhone Safari実機操作・熱負荷は未確認。今後のプレイテストで評価する。

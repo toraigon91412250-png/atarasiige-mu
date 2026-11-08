@@ -1,32 +1,27 @@
-# OVERDRIVE // VECTOR BREAK — KINETIC AIM
+# OVERDRIVE // VECTOR BREAK — WEAPON EVOLUTION
 
-**v2.1-alpha3 (2026-11-08) · 第1回改修**
+**v2.2-alpha4 (2026-11-08) ・第2回改修**
 
-iPhoneで照準が合わせにくく、FLOWが溜まらず敵の強さが過剰に感じられる問題を修正した更地版。
+Astraの実装をコピーせず、3種類のエネルギー武器を独自に再構成。
 
-## KINETIC AIM
+## 新しい武器
 
-- ターゲット周辺で視点移動を減速。カメラは自動で敵を追尾しない。
-- 画面中央付近の敵に対する射撃の進行方向を補正する。
-- 補正範囲：スマホ通常9°／FLOW DRIVE 14°、PC通常2°／FLOW DRIVE 4°。
-- 有効範囲端では補正が弱くなる。画面外・背後・射程外・遮蔽物越しは対象外。
-- すでに敵に当たる軌道は変えず、弱点を手動で狙う操作を維持。
-- 補正可能なとき照準を控えめに発光（FLOW中は金色）。
-- スマホFIREは押した瞬間に撃ち、押し続ければ連射する。
+- **VOLT CARBINE**：細い多段装甲、側面の発光スパイン。連続命中でSURGEを蓄積（最大6段）。FLOW DRIVE中は連射速度が最大約1.5倍。1.45秒間命中しないと失効。
+- **BREACH**：大型の近距離エミッター。命中時に短いひるみ、FLOW DRIVE中は敵を押し出す。空中での射撃は小さな後方移動を生む。
+- **PRISM LANCER**：左右分離レールと発光コア。敵を狙い続けるとFOCUSを蓄積し次の射撃を最大+70%強化。FLOW DRIVE中は近くの敵に最大2回連鎖攻撃。
+- **共通**：軽量3Dモデル（22〜27パーツ）、射撃反動、発射時のエネルギー発光、武器ごとの再充填アニメーション、覚醒による可動部分の変形と光量変化。
 
-## 今回変更していない内容
+## 引き継いだもの
 
-敵HP、敵の火力・射撃間隔、体力・シールド、覚醒火力倍率、銃の3Dモデル。地形は先に実施した更地版のまま。
+更地アリーナ、KINETIC AIM照準補助、6セクター、FLOW DRIVE、iPhone Safari向けのタッチ操作、既存武器の弾数と基礎威力。
 
-## 起動
+## ファイル
 
-- [GitHub Pages](https://toraigon91412250-png.github.io/atarasiige-mu/)
-- ソース: `game.js`, `style.css`, `template.html`, `build.py`
-- 完成HTML: `index.html` / `OVERDRIVE.html`
-- 配布ソースZIPにはエイムアシストやモバイル操作などの自動テストも同梱。
+- GitHub Pages: https://toraigon91412250-png.github.io/atarasiige-mu/
+- 単体HTML: `index.html` または `OVERDRIVE.html`
+- ソース: `game.js` と `style.css`, `template.html`、`build.py`
+- 自動テストと説明書入りのZIPはChatGPTチャットでも配布。
 
-## テスト概要
+## QA
 
-照準補正の通常／覚醒角度、正常命中、補正範囲外・背後の除外、移動と着地、セクターと勝敗、スマホタッチ・FIREタップは自動テストを通過。ただし、この環境ではWebGLを起動できず、実GPUでの画面表示やiPhone Safari実機での体感は未確認。
-
-旧版の保全：`archive/flow-drive-v2-alpha1-20261107`, `archive/overdrive-flat-v2-alpha2-20261108`。
+3武器の射撃・反動・リロード、武器切替、SURGE、FOCUS、FLOW、画面内の投影範囲をNodeのモックWebGLで検証。実GPUでの描画・iPhone Safari実機のFPSと外観は未確認。
