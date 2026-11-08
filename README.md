@@ -59,3 +59,13 @@ Three.js は MIT License。外部のThree.jsのランタイムは本パッケー
 - Track player yaw/pitch and speed; apply subtle smooth lag and step movement to the single parent rigid weapon transform, not to individual static parts.
 - Node tests for static batching and legacy flight/weapon game logic passed. Actual iPhone Safari FPS and final overlay visuals remain unverified. Source ZIP is available separately.
 - Pre-fix archive: archive/overdrive-v2.4-pre-performance-fix-20261108.
+
+
+## v2.6 メニュー先読み・切り替えキャッシュ（2026-11-08）
+
+- GB-03、ARC-RING、AETHER-09をメニュー画面で一体ずつ生成し、メッシュ結合とGPU初回描画まで完了させてキャッシュする。
+- キャッシュ済みモデルへの切り替えでは表示・非表示と親グループのスケールだけ変更する。再生成・メッシュ再結合・GPU初期化・disposeはしない。
+- すぐ開始して準備が間に合わない場合は旧モデル表示へ一時フォールバックし、モデル完成後に自動復帰する。未準備モデルだけはゲーム開始後にも準備処理が走る可能性がある。
+- ブラウザ診断 `window.__OVERDRIVE_MODEL_STATUS__`：`buildCounts`、`warmCounts`、`preloadReady`、`cacheHits`、`lastSwitchMs`。
+- 3モデルを常駐するためメモリ使用量は増える可能性がある。iPhone Safariの実GPU FPSやメモリは未計測。
+- 既存のゲームバランス、射撃、FLOW、武器の形状や独立可動パーツは変更していない。

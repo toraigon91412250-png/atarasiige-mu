@@ -34,3 +34,12 @@
 - Synthetic batching: 38 meshes down to 3 render meshes, original vertices retained and moving mesh excluded. PASS.
 - Model hierarchy tests, integrated gameplay, mobile flying and viewport projection tests: PASS.
 - Real iPhone Safari profiling and WebGL display inspection: NOT RUN.
+
+
+## v2.6 切り替えキャッシュ回帰（2026-11-08）
+
+- 3モデルを各1回だけ構築・GPUウォームアップするテスト（モック）：PASS。
+- 35回の武器切り替え後も `buildCounts=[1,1,1]`、`warmCounts=[1,1,1]`：PASS。
+- ゲーム開始がキャッシュ準備より早い場合、画面描画フレーム中の同期生成を避け、準備後に復帰：PASS。
+- 静的メッシュ結合、3モデル構造、射撃性能、FLOW飛行、モバイル操作の従来テスト：PASS。
+- 実機iPhone Safariの切り替えフレーム時間・GPUの事前転送・メモリ使用量は未計測。

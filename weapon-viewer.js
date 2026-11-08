@@ -79,7 +79,7 @@ function findAnimatedMeshes(root, pose){
    Real model part animations retain their original independent pivots.
    The original WebGL weapon remains as a fallback when the CDN/second GPU context is unavailable. */
 (async()=>{
-  const status={ready:false,model:-1,meshCount:0,renderMeshes:0,batches:0,drawsAvoided:0,quality:'balanced',errors:[],renders:0,source:'GB-03 / ARC-RING / AETHER-09'};
+  const status={ready:false,model:-1,meshCount:0,renderMeshes:0,batches:0,drawsAvoided:0,quality:'balanced',errors:[],renders:0,preloadReady:[false,false,false],buildCounts:[0,0,0],warmCounts:[0,0,0],cacheHits:0,cacheCount:0,allPreloaded:false,lastSwitchMs:0,peakSwitchMs:0,preloadMs:[0,0,0],source:'GB-03 / ARC-RING / AETHER-09'};
   window.__OVERDRIVE_MODEL_STATUS__=status;
   const mobile=('ontouchstart' in window)||navigator.maxTouchPoints>0;
   let THREE;
@@ -128,28 +128,35 @@ function findAnimatedMeshes(root, pose){
   let model=null,index=-1,shotSeen=-1,last=performance.now(),lastRendered=0,zero=0;
   let prevHeading=null,prevPitch=null,swayX=0,swayY=0,frameCounter=0,slowSamples=0;
   let overlayInterval=mobile?30:16;
+  // Every original 3D prop is built, merged and GPU-warmed ONCE, during the menu.
+  // No new model generation, static geometry baking or disposal on a normal weapon swap.
+  const cache=new Map(),preloadQueue=[0,1,2];
+  let preloadTimer=null,preloadStopped=false;
   function destroy(){
-    while(pivot.children.length){const root=pivot.children[0];pivot.remove(root);const geos=new Set(),materials=new Set(),textures=new Set();
-      root.traverse(o=>{if(o.geometry)geos.add(o.geometry);if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){
+    preloadStopped=true;
+    if(preloadTimer!==null){clearTimeout(preloadTimer);preloadTimer=null;}
+    const geos=new Set(),materials=new Set(),textures=new Set();
+    for(const entry of cache.values()){
+      pivot.remove(entry.root);
+      entry.root.traverse(o=>{if(o.geometry)geos.add(o.geometry);if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){
         materials.add(m);if(m.map)textures.add(m.map);
-      }}});geos.forEach(g=>g.dispose());textures.forEach(t=>t.dispose());materials.forEach(m=>m.dispose());}
-    model=null;
+      }}});
+    }
+    geos.forEach(g=>g.dispose());textures.forEach(t=>t.dispose());materials.forEach(m=>m.dispose());
+    cache.clear();model=null;index=-1;status.cacheCount=0;status.allPreloaded=false;
   }
-  function load(i){
-    if(i===index&&model)return;
-    destroy();
+  function createCached(i){
+    if(cache.has(i))return cache.get(i);
+    const started=performance.now();
     const m=i===0?buildGravityBreaker(THREE):i===1?buildArcRing(THREE):buildAether09(THREE);
     const root=m.root;
-    // Source models run along local +X. Recenter within a single unbending parent rig.
+    // The whole gun is one rigid root. Original independently animated parts stay independent.
     root.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(root);
     const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
     root.position.sub(center);
     const length=Math.max(5,size.x);
-    pivot.scale.setScalar((mobile?3.15:3.40)/length);
-    pivot.rotation.set(-.02,1.04,0);pivot.position.set(mobile?1.53:1.50,-.92,-3.25);
-    pivot.add(root);
+    root.visible=false;pivot.add(root);
     m.stats=m.stats||{};let n=0;root.traverse(o=>{if(o.isMesh)n++});
-    // Probe source animation first so moving fins, rotors and core details are never baked.
     const pose=(dt,t,drive,charged,flash)=>{
       if(i===0)m.update(dt,t,drive,charged,flash);
       else if(i===1)animateArcRing(m,t,dt,drive?1:.12,flash,drive,mobile);
@@ -157,10 +164,65 @@ function findAnimatedMeshes(root, pose){
     };
     const moving=findAnimatedMeshes(root,pose);
     const perf=batchStaticWeapon(THREE,root,moving);
-    if(i===2){m.setCharged(false);m.setExploded(false);}
-    status.model=i;status.meshCount=n;status.renderMeshes=perf.after;status.drawsAvoided=perf.saved;status.batches=perf.batches;
-    model=m;index=i;shotSeen=-1;zero=0;prevHeading=null;prevPitch=null;swayX=0;swayY=0;
+    pose(0,0,false,0,0);
+    const entry={i,m,root,scale:(mobile?3.15:3.40)/length,n,perf,warmed:false};
+    cache.set(i,entry);status.buildCounts[i]++;status.cacheCount=cache.size;
+    status.preloadMs[i]=Math.round((performance.now()-started)*100)/100;
+    return entry;
   }
+  function activateCached(i){
+    if(!cache.has(i))return false;
+    const started=performance.now();
+    const entry=cache.get(i);
+    if(index===i&&model===entry.m)return true;
+    // A cache hit is a visibility toggle and a scale update, not any model construction.
+    for(const c of cache.values())c.root.visible=c.i===i;
+    pivot.scale.setScalar(entry.scale);
+    model=entry.m;index=i;shotSeen=-1;zero=0;prevHeading=null;prevPitch=null;swayX=0;swayY=0;
+    status.model=i;status.meshCount=entry.n;status.renderMeshes=entry.perf.after;
+    status.drawsAvoided=entry.perf.saved;status.batches=entry.perf.batches;
+    status.cacheHits++;
+    status.lastSwitchMs=Math.round((performance.now()-started)*1000)/1000;
+    status.peakSwitchMs=Math.max(status.peakSwitchMs,status.lastSwitchMs);
+    return true;
+  }
+  function warmCached(i){
+    const entry=cache.get(i);if(!entry||entry.warmed)return;
+    // Render the hidden canvas once to upload geometry and compile GPU programs BEFORE a swap.
+    // Other weapons stay invisible and the live game canvas is not touched.
+    const previous=new Map([...cache.values()].map(c=>[c,c.root.visible]));
+    const previousScale=pivot.scale.x;
+    try{
+      for(const c of cache.values())c.root.visible=c.i===i;
+      pivot.scale.setScalar(entry.scale);
+      renderer.render(scene,camera);
+      entry.warmed=true;status.preloadReady[i]=true;status.warmCounts[i]++;
+    }finally{
+      for(const [c,visible] of previous)c.root.visible=visible;
+      pivot.scale.setScalar(previousScale);
+    }
+    status.allPreloaded=status.preloadReady.every(Boolean);
+  }
+  function schedulePreload(delay=55){
+    if(preloadStopped||preloadTimer!==null||status.allPreloaded)return;
+    preloadTimer=setTimeout(()=>{
+      preloadTimer=null;
+      if(preloadStopped)return;
+      const st=window.__OVERDRIVE_VISUAL_STATE__?.();
+      // Never build an unrelated weapon in the middle of a fight.
+      const playing=st?.mode==='playing',needed=playing?st.weapon:-1;
+      let next=needed>=0&&!cache.get(needed)?.warmed?needed:-1;
+      if(next<0&&!playing){next=preloadQueue.find(i=>!cache.get(i)?.warmed)??-1;}
+      if(next<0){if(!playing&&!status.allPreloaded)schedulePreload(500);return;}
+      try{createCached(next);warmCached(next);}
+      catch(err){status.errors.push('Preload '+next+': '+String(err));console.error('Weapon preload failed:',err);
+        // Fall back to the original weapon; do not spin on a failed cache forever.
+        preloadStopped=true;window.__OVERDRIVE_MODEL_READY__=false;canvas.style.display='none';return;}
+      if(!status.allPreloaded)schedulePreload(90);
+    },delay);
+  }
+  // One model per menu tick; avoid a big triple-build in a single animation frame.
+  schedulePreload(35);
   function animate(st,dt){
     const flash=Math.min(1,st.flash/.18),charged=st.charge||0;
     const root=model.root;
@@ -186,12 +248,20 @@ function findAnimatedMeshes(root, pose){
   }
   function frame(t){requestAnimationFrame(frame);
     const st=window.__OVERDRIVE_VISUAL_STATE__?.();
-    if(!st||st.mode!=='playing'){canvas.style.display='none';return;}
+    if(!st||st.mode!=='playing'){canvas.style.display='none';if(!status.allPreloaded)schedulePreload(140);return;}
     // Reduced overlay frame budget; the main FPS receives render priority.
     if(t-lastRendered<overlayInterval)return;
     const elapsed=t-lastRendered;const dt=Math.min(.06,Math.max(.001,(t-last)/1000));last=t;lastRendered=t;
     try{
-      if(index!==st.weapon||!model)load(st.weapon);
+      if(index!==st.weapon||!model){
+        if(!cache.get(st.weapon)?.warmed){
+          // In an unusually fast start, keep gameplay responsive and use the old gun
+          // until its background preload is ready; never synchronously construct here.
+          status.ready=false;window.__OVERDRIVE_MODEL_READY__=false;canvas.style.display='none';
+          schedulePreload(0);return;
+        }
+        activateCached(st.weapon);
+      }
       animate(st,dt);
       canvas.style.display='block';
       renderer.render(scene,camera);
@@ -201,7 +271,8 @@ function findAnimatedMeshes(root, pose){
         if(elapsed>58)slowSamples++;else slowSamples=Math.max(0,slowSamples-1);
         if(slowSamples>=2&&modelDPR>.66){modelDPR=.66;overlayInterval=40;renderer.setPixelRatio(modelDPR);setSize();status.quality='low';}
       }
-      if(!status.ready){status.ready=true;window.__OVERDRIVE_MODEL_READY__=true;}
+      if(!status.ready)status.ready=true;
+      if(!window.__OVERDRIVE_MODEL_READY__)window.__OVERDRIVE_MODEL_READY__=true;
     }catch(err){
       status.errors.push('3D model: '+String(err));console.error('3D prop integration failed, use fallback:',err);
       status.ready=false;window.__OVERDRIVE_MODEL_READY__=false;canvas.style.display='none';
