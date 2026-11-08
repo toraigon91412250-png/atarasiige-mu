@@ -26,3 +26,11 @@
 .crosshair.aim-assist i{background:#fff;opacity:.95;box-shadow:0 0 8px rgba(100,255,220,.65)}
 .crosshair.drive-assist span{background:#ffd376}
 .crosshair.drive-assist i{background:#fff2bf;box-shadow:0 0 10px rgba(255,206,89,.75)}
+
+/* FLOW FLIGHT: no central glare, subtle edge-only peripheral speed. */
+#flightFx{position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0;transition:opacity .17s;background:repeating-linear-gradient(177deg,transparent 0 38px,rgba(88,206,238,.055) 40px,transparent 44px);-webkit-mask-image:linear-gradient(90deg,#000,transparent 17%,transparent 83%,#000);mask-image:linear-gradient(90deg,#000,transparent 17%,transparent 83%,#000)}
+body.flow-flight #flightFx{opacity:.72;animation:flowEdgeScroll .5s linear infinite}
+@keyframes flowEdgeScroll{to{background-position:0 44px}}
+.altitude-readout{font:700 11px monospace;color:#8feee6;letter-spacing:.04em;opacity:.85}
+#damageFlash{background:radial-gradient(ellipse at center,transparent 52%,rgba(255,72,90,.40) 100%);transition:opacity .11s}
+@media (prefers-reduced-motion:reduce){body.flow-flight #flightFx{animation:none}}
