@@ -50,3 +50,12 @@ AETHER最大充填はエネルギーセルを2個消費。全モデルにFLOW DA
 **GitHub Pagesへ統合プレビューとして公開済み**。iPhone Safariでの実GPU描画、FPS、実機操作感は未確認。
 
 Three.js は MIT License。外部のThree.jsのランタイムは本パッケージに含まれない。
+
+
+## v2.5 Performance + rigid camera follow (2026-11-08)
+- Gameplay balances, enemy waves and 3 source models are unchanged.
+- Combine same-material, unmoving sibling meshes into GPU draw batches. Motion-tested ring/core/fin parts remain separate. Render only the right/bottom weapon viewport using PerspectiveCamera.setViewOffset.
+- Mobile main WebGL DPR cap: 1.15. Weapon WebGL DPR: 0.80, with adaptive 0.66 fallback under repeated stalls. Disable MSAA for mobile; smaller procedural reflection texture, simpler mobile lighting.
+- Track player yaw/pitch and speed; apply subtle smooth lag and step movement to the single parent rigid weapon transform, not to individual static parts.
+- Node tests for static batching and legacy flight/weapon game logic passed. Actual iPhone Safari FPS and final overlay visuals remain unverified. Source ZIP is available separately.
+- Pre-fix archive: archive/overdrive-v2.4-pre-performance-fix-20261108.

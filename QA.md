@@ -28,3 +28,9 @@
 3. 回避やFLOW飛行中も照準と敵が見えるか。
 4. AETHERのタップと1.05秒の長押しが正常に区別されるか。
 5. iPhoneで各モデル約60秒ずつプレイし、極端なカクつきがないか。
+
+
+## v2.5 extra tests
+- Synthetic batching: 38 meshes down to 3 render meshes, original vertices retained and moving mesh excluded. PASS.
+- Model hierarchy tests, integrated gameplay, mobile flying and viewport projection tests: PASS.
+- Real iPhone Safari profiling and WebGL display inspection: NOT RUN.
